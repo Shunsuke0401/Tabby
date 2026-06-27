@@ -9,8 +9,12 @@ app.use((_, res, next) => { res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Headers", "Content-Type"); next(); });
 app.options("*", (_, res) => res.sendStatus(204));
 
+app.use(express.static("public")); // serves public/index.html at GET /
+
 app.get("/health", (_, res) => res.json({ status: "ok" }));
-app.get("/", (_, res) => res.send("<h1>Tabby</h1><p>The agent that closes tabs you stopped using — and never loses anything.</p>"));
+
+app.get("/download", (_req, res) =>
+  res.download("public/tabby-extension.zip", "tabby-extension.zip"));
 
 app.post("/classify", async (req, res) => {
   const tabs = req.body?.tabs ?? [];

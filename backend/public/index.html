@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tabby — the tab assistant that never loses anything</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <h1>🐱 Tabby</h1>
+    <p class="tagline">Your tab assistant. It closes the tabs you've stopped using — and never loses anything.</p>
+    <p class="sub">Watches your tabs, quietly closes the dead ones, asks about the rest by voice, and brings any tab back when you describe it.</p>
+  </header>
+
+  <section class="video">
+    <h2>See it in action (2 min)</h2>
+    <!-- To embed the demo: set VIDEO_EMBED_URL below to your YouTube/Loom EMBED url. -->
+    <div class="video-frame" id="videoFrame"></div>
+    <script>
+      // ⚠️ One-line change once the demo is recorded — paste the EMBED url (e.g. https://www.youtube.com/embed/XXXX).
+      const VIDEO_EMBED_URL = "";
+      const frame = document.getElementById("videoFrame");
+      if (VIDEO_EMBED_URL) {
+        const iframe = document.createElement("iframe");
+        iframe.src = VIDEO_EMBED_URL;
+        iframe.title = "Tabby demo";
+        iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+        iframe.allowFullscreen = true;
+        frame.appendChild(iframe);
+      } else {
+        frame.classList.add("placeholder");
+        frame.innerHTML = "<div>📹 Demo video coming soon</div>";
+      }
+    </script>
+  </section>
+
+  <section class="try">
+    <h2>Try it yourself</h2>
+    <a class="download" href="/download">⬇️ Download the Tabby extension</a>
+    <ol class="steps">
+      <li>Unzip the download.</li>
+      <li>Go to <code>chrome://extensions</code> and turn on <strong>Developer mode</strong> (top-right).</li>
+      <li>Click <strong>Load unpacked</strong> and pick the unzipped <code>extension</code> folder. Open Tabby from the toolbar.</li>
+    </ol>
+    <p class="note">It works immediately — Tabby talks to this deployed backend, so there's no API key or setup on your end.</p>
+  </section>
+
+  <section class="live" id="liveDemo">
+    <h2>Or see the brain work — no install</h2>
+    <p>Paste a few tab titles (one per line) and watch Gemini sort them into <em>finished</em>, <em>parked-intent</em>, or <em>reference</em>.</p>
+    <textarea id="titles" rows="6" placeholder="Amazon: Your Account&#10;Flights SFO to NYC — Google Flights&#10;404 Not Found&#10;Gmail"></textarea>
+    <button id="classifyBtn">Classify</button>
+    <ul id="results"></ul>
+    <script src="app.js"></script>
+  </section>
+
+  <footer><p>Tabby · built on Gemini 3.5 Flash + Gemini Live · deployed on Cloud Run</p></footer>
+</body>
+</html>
