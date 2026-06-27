@@ -48,13 +48,16 @@ $("reopenQuery").addEventListener("keydown", async (e) => {
 const talkBtn = document.createElement("button");
 talkBtn.textContent = "🎙️ Talk to Tabby";
 talkBtn.onclick = async () => {
-  // The offscreen document can't show a mic prompt; grant it here (a visible page) first,
-  // which persists the permission for the extension origin so offscreen capture works.
+  // Side panels (and offscreen docs) can't display Chrome's mic prompt. If permission was
+  // already granted, getUserMedia resolves silently and we proceed. If not, we open a normal
+  // tab that CAN prompt; granting there persists the permission for the extension origin,
+  // after which both the panel and the offscreen capture work.
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(t => t.stop());
   } catch (e) {
-    voiceStatus.textContent = `Mic error — ${e?.name ?? ""}: ${e?.message ?? e}`;
+    chrome.tabs.create({ url: chrome.runtime.getURL("mic-permission.html") });
+    voiceStatus.textContent = "Opened a tab to enable your microphone — click Allow there, then press Talk again.";
     return;
   }
   chrome.runtime.sendMessage("TALK");
