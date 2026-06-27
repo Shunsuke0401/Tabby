@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <head><link rel="stylesheet" href="panel.css" /></head>
+  <body>
+    <header><h1>Tabby</h1><span id="count">— tabs</span></header>
+    <button id="reviewNow">Review now</button>
+    <section id="autoClosed"><h2>Closed for you</h2><ul id="autoClosedList"></ul></section>
+    <section id="suggestions"><h2>Asking about</h2><ul id="suggestList"></ul></section>
+    <section id="closedLog"><h2>Closed by Tabby (click to reopen)</h2>
+      <input id="reopenQuery" placeholder="describe a tab to bring back…" />
+      <ul id="closedList"></ul>
+    </section>
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>
