@@ -22,12 +22,11 @@ function teardown() {
   micProc = micSrc = micStream = null;
 }
 
-async function startMic(onChunk) {
+async function startMic(onChunk, deviceId) {
   const base = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
-  const stored = (await chrome.storage.local.get("micDeviceId")).micDeviceId;
   try {
     micStream = await navigator.mediaDevices.getUserMedia({
-      audio: stored ? { ...base, deviceId: { exact: stored } } : base,
+      audio: deviceId ? { ...base, deviceId: { exact: deviceId } } : base,
     });
   } catch (e) {
     // Chosen device unavailable — fall back to the system default rather than failing.
@@ -104,7 +103,7 @@ async function startVoice(msg) {
     await startMic((int16) => {
       session.sendAudio(int16);
       if (++micChunks === 1) chrome.runtime.sendMessage({ type: "VOICE_DEBUG", text: "🎤 mic streaming…" });
-    });
+    }, msg.micDeviceId);
     setState("listening");
     session.sendContext(
       `Mark's currently open tabs (id, title, url): ${JSON.stringify(msg.openTabs ?? [])}.\n` +

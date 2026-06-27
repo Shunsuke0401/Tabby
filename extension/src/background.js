@@ -111,7 +111,8 @@ chrome.runtime.onMessage.addListener((msg, _s, send) => {
     const openTabs = tabs
       .filter(t => t.url && !/^(chrome|edge|about|chrome-extension):/.test(t.url))
       .map(t => ({ id: t.id, title: t.title, url: t.url }));
-    chrome.runtime.sendMessage({ type: "START_VOICE", openTabs, backendUrl: BACKEND_URL });
+    const { micDeviceId } = await chrome.storage.local.get("micDeviceId"); // offscreen has no chrome.storage
+    chrome.runtime.sendMessage({ type: "START_VOICE", openTabs, backendUrl: BACKEND_URL, micDeviceId });
     send({ ok: true });
   })();
   return true;
