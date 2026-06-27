@@ -46,12 +46,21 @@ $("reopenQuery").addEventListener("keydown", async (e) => {
 });
 
 const talkBtn = document.createElement("button");
-talkBtn.textContent = "🎙️ Talk to Tabby";
+let voiceActive = false;
+function setTalkButton(active) {
+  voiceActive = active;
+  talkBtn.textContent = active ? "⏹ Stop" : "🎙️ Talk to Tabby";
+}
+setTalkButton(false);
 talkBtn.onclick = async () => {
+  if (voiceActive) {                       // toggle off — end the session
+    chrome.runtime.sendMessage("STOP_VOICE");
+    setTalkButton(false);
+    return;
+  }
   // Side panels (and offscreen docs) can't display Chrome's mic prompt. If permission was
   // already granted, getUserMedia resolves silently and we proceed. If not, we open a normal
-  // tab that CAN prompt; granting there persists the permission for the extension origin,
-  // after which both the panel and the offscreen capture work.
+  // tab that CAN prompt; granting there persists the permission for the extension origin.
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(t => t.stop());
@@ -61,12 +70,17 @@ talkBtn.onclick = async () => {
     return;
   }
   chrome.runtime.sendMessage("TALK");
+  setTalkButton(true);
 };
 document.querySelector("header").appendChild(talkBtn);
 
 const voiceStatus = document.createElement("span");
 voiceStatus.id = "voiceStatus";
 document.querySelector("header").appendChild(voiceStatus);
+
+const micLevel = document.createElement("div");
+micLevel.id = "micLevel";
+document.querySelector("header").appendChild(micLevel);
 
 const voiceDebug = document.createElement("div");
 voiceDebug.id = "voiceDebug";
@@ -99,6 +113,12 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "VOICE_STATE") {
     const base = STATE_LABEL[msg.state] ?? "";
     voiceStatus.textContent = msg.detail ? `${base} [${msg.detail}]` : base;
+    if (msg.state === "idle" || msg.state === "error") setTalkButton(false);
+  }
+  if (msg?.type === "VOICE_LEVEL") {
+    const p = Math.min(1, msg.peak ?? 0);
+    const bars = Math.round(p * 10);
+    micLevel.textContent = `🎤 ${"█".repeat(bars)}${"░".repeat(10 - bars)} ${p.toFixed(2)}`;
   }
   if (msg?.type === "VOICE_DEBUG") {
     const line = document.createElement("div");

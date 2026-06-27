@@ -1,7 +1,7 @@
 import { downsampleToPCM16, pcm16ToFloat32 } from "./audio.js";
 import { connectLive } from "./live.js";
 
-let audioCtx, micStream, session;
+let audioCtx, micStream, micSrc, micProc, session;
 let playHead = 0;        // schedule incoming audio chunks back-to-back
 let speakTimer;
 let lastState = "";
@@ -12,15 +12,36 @@ function setState(state, detail) {
   chrome.runtime.sendMessage({ type: "VOICE_STATE", state, detail });
 }
 
+// Tear down any active session + mic so we never run two at once (overlap kills input).
+function teardown() {
+  try { session?.close(); } catch {}
+  session = null;
+  try { if (micProc) { micProc.onaudioprocess = null; micProc.disconnect(); } } catch {}
+  try { micSrc?.disconnect(); } catch {}
+  try { micStream?.getTracks().forEach(t => t.stop()); } catch {}
+  micProc = micSrc = micStream = null;
+}
+
 async function startMic(onChunk) {
-  micStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
+  micStream = await navigator.mediaDevices.getUserMedia({
+    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  });
   audioCtx = audioCtx ?? new AudioContext();
-  const src = audioCtx.createMediaStreamSource(micStream);
-  const proc = audioCtx.createScriptProcessor(4096, 1, 1); // simple + reliable for a demo
-  proc.onaudioprocess = (e) => onChunk(downsampleToPCM16(e.inputBuffer.getChannelData(0), audioCtx.sampleRate, 16000));
+  if (audioCtx.state === "suspended") await audioCtx.resume();
+  micSrc = audioCtx.createMediaStreamSource(micStream);
+  micProc = audioCtx.createScriptProcessor(4096, 1, 1); // simple + reliable for a demo
+  let n = 0, windowPeak = 0;
+  micProc.onaudioprocess = (e) => {
+    const ch = e.inputBuffer.getChannelData(0);
+    let peak = 0;
+    for (let i = 0; i < ch.length; i++) { const a = Math.abs(ch[i]); if (a > peak) peak = a; }
+    if (peak > windowPeak) windowPeak = peak;
+    if (++n % 12 === 0) { chrome.runtime.sendMessage({ type: "VOICE_LEVEL", peak: windowPeak }); windowPeak = 0; } // ~1/sec
+    onChunk(downsampleToPCM16(ch, audioCtx.sampleRate, 16000));
+  };
   // Keep the processor running without routing the mic back to the speakers (avoids feedback).
   const sink = audioCtx.createGain(); sink.gain.value = 0;
-  src.connect(proc); proc.connect(sink); sink.connect(audioCtx.destination);
+  micSrc.connect(micProc); micProc.connect(sink); sink.connect(audioCtx.destination);
 }
 
 // Live returns base64 PCM16 @ 24kHz; schedule chunks sequentially so they don't overlap.
@@ -39,18 +60,17 @@ function playPCM(base64) {
 }
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type === "START_VOICE") {
-    startVoice(msg);
-    return;
-  }
-  if (msg?.type === "VOICE_TOOL_RESULT" && session) {
-    session.toolResponse(msg.id, msg.name, msg.result);
-  }
+  if (msg?.type === "START_VOICE") { startVoice(msg); return; }
+  if (msg === "STOP_VOICE") { teardown(); setState("idle"); return; }
+  if (msg?.type === "VOICE_TOOL_RESULT" && session) { session.toolResponse(msg.id, msg.name, msg.result); }
 });
 
 async function startVoice(msg) {
+  teardown();        // never overlap sessions
+  playHead = 0;
   try {
     audioCtx = audioCtx ?? new AudioContext();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
     const { token, model } = await fetch(`${msg.backendUrl}/live-token`, { method: "POST" }).then(r => r.json());
     if (!token || !model) throw new Error("no live token");
     session = await connectLive({
