@@ -14,6 +14,15 @@ chrome.runtime.onInstalled.addListener(() => {
 
 installIdleWatcher();
 
+async function ensureOffscreen() {
+  if (await chrome.offscreen.hasDocument?.()) return;
+  await chrome.offscreen.createDocument({
+    url: "offscreen.html",
+    reasons: ["USER_MEDIA"],
+    justification: "Tabby voice: capture mic and play Gemini Live audio.",
+  });
+}
+
 async function runReview() {
   const candidates = await gatherCandidates();
   const byId = Object.fromEntries(candidates.map(c => [c.id, c]));

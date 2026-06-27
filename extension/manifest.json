@@ -3,7 +3,7 @@
   "name": "Tabby",
   "version": "0.1.0",
   "description": "An assistant that closes the tabs you stopped using — and never loses anything.",
-  "permissions": ["tabs", "scripting", "storage", "alarms", "sidePanel"],
+  "permissions": ["tabs", "scripting", "storage", "alarms", "sidePanel", "offscreen"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "src/background.js", "type": "module" },
   "side_panel": { "default_path": "sidepanel/panel.html" },
