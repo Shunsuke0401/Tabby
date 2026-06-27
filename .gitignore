@@ -7,4 +7,4 @@ dist/
 
 # planning docs stay local — keep the public repo product-only
 plan.md
-implementation-plan.md
+implementation-plan*.md
