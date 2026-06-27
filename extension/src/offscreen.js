@@ -28,6 +28,10 @@ async function startMic(onChunk) {
   });
   audioCtx = audioCtx ?? new AudioContext();
   if (audioCtx.state === "suspended") await audioCtx.resume();
+  // Diagnostics: surface exactly what we captured (device, muted, live) + context state.
+  const track = micStream.getAudioTracks()[0];
+  chrome.runtime.sendMessage({ type: "VOICE_DEBUG",
+    text: `mic="${track?.label || "?"}" muted=${track?.muted} enabled=${track?.enabled} state=${track?.readyState} | ctx=${audioCtx.state} ${audioCtx.sampleRate}Hz` });
   micSrc = audioCtx.createMediaStreamSource(micStream);
   micProc = audioCtx.createScriptProcessor(4096, 1, 1); // simple + reliable for a demo
   let n = 0, windowPeak = 0;
@@ -42,6 +46,10 @@ async function startMic(onChunk) {
   // Keep the processor running without routing the mic back to the speakers (avoids feedback).
   const sink = audioCtx.createGain(); sink.gain.value = 0;
   micSrc.connect(micProc); micProc.connect(sink); sink.connect(audioCtx.destination);
+  // Watchdog: if the processor never fires, the context isn't actually running.
+  setTimeout(() => {
+    if (n === 0) chrome.runtime.sendMessage({ type: "VOICE_DEBUG", text: `⚠️ no audio frames after 2.5s (ctx=${audioCtx.state})` });
+  }, 2500);
 }
 
 // Live returns base64 PCM16 @ 24kHz; schedule chunks sequentially so they don't overlap.
