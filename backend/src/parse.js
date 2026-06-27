@@ -20,3 +20,8 @@ export function parseClassifyResponse(text) {
       };
     });
 }
+
+export function parseMatchResponse(text) {
+  try { const d = JSON.parse(text); return { url: typeof d?.url === "string" ? d.url : null }; }
+  catch { return { url: null }; }
+}

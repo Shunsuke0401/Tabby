@@ -15,3 +15,16 @@ You must NEVER auto-close a "parked-intent" or "reference" tab. When in doubt, d
 Tabs:
 ${list}`;
 }
+
+export function buildMatchPrompt(query, records) {
+  const list = records.map((r, i) =>
+    `${i}. url:${r.url} | desc:${r.description} | keywords:${(r.keywords || []).join(",")} | title:${r.title ?? ""}`
+  ).join("\n");
+  return `The user wants to reopen a previously closed tab but only remembers what it was about.
+User request: "${query}"
+
+Closed tabs:
+${list}
+
+Return the url of the single best match. If nothing reasonably matches, return null.`;
+}

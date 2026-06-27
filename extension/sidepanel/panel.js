@@ -1,3 +1,5 @@
+import { matchClosed } from "../src/api.js";
+
 async function refreshCount() {
   const tabs = await chrome.tabs.query({});
   document.getElementById("count").textContent = `${tabs.length} tabs`;
@@ -35,3 +37,10 @@ $("reviewNow").onclick = async () => {
   renderClosed();
 };
 renderClosed();
+
+$("reopenQuery").addEventListener("keydown", async (e) => {
+  if (e.key !== "Enter" || !e.target.value.trim()) return;
+  const url = await matchClosed(e.target.value.trim());
+  if (url) { await chrome.runtime.sendMessage({ type: "REOPEN", url }); e.target.value = ""; renderClosed(); }
+  else { e.target.placeholder = "couldn't find that one — try describing it differently"; }
+});

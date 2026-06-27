@@ -1,7 +1,7 @@
 import express from "express";
-import { buildClassifyPrompt } from "./src/prompt.js";
-import { parseClassifyResponse } from "./src/parse.js";
-import { CLASSIFY_SCHEMA } from "./src/schema.js";
+import { buildClassifyPrompt, buildMatchPrompt } from "./src/prompt.js";
+import { parseClassifyResponse, parseMatchResponse } from "./src/parse.js";
+import { CLASSIFY_SCHEMA, MATCH_SCHEMA } from "./src/schema.js";
 import { generateJson } from "./src/gemini.js";
 const app = express();
 app.use(express.json({ limit: "5mb" }));
@@ -22,6 +22,15 @@ app.post("/classify", async (req, res) => {
     console.error(e);
     res.status(502).json({ results: [], error: "classify_failed" });
   }
+});
+
+app.post("/match", async (req, res) => {
+  const { query, records = [] } = req.body ?? {};
+  if (!query || !records.length) return res.json({ url: null });
+  try {
+    const text = await generateJson(buildMatchPrompt(query, records), MATCH_SCHEMA);
+    res.json(parseMatchResponse(text));
+  } catch (e) { console.error(e); res.status(502).json({ url: null }); }
 });
 
 const port = process.env.PORT || 8080;

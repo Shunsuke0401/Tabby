@@ -20,3 +20,9 @@ export const CLASSIFY_SCHEMA = {
   },
   required: ["results"],
 };
+
+export const MATCH_SCHEMA = {
+  type: "object",
+  properties: { url: { type: "string", nullable: true } },
+  required: ["url"],
+};

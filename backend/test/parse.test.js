@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseClassifyResponse } from "../src/parse.js";
+import { parseClassifyResponse, parseMatchResponse } from "../src/parse.js";
 
 describe("parseClassifyResponse", () => {
   it("parses valid JSON results", () => {
@@ -19,4 +19,10 @@ describe("parseClassifyResponse", () => {
   it("returns [] on malformed JSON", () => {
     expect(parseClassifyResponse("not json")).toEqual([]);
   });
+});
+
+it("parseMatchResponse returns the chosen url or null", () => {
+  expect(parseMatchResponse(JSON.stringify({ url: "https://amazon.com" })).url).toBe("https://amazon.com");
+  expect(parseMatchResponse(JSON.stringify({ url: null })).url).toBeNull();
+  expect(parseMatchResponse("garbage").url).toBeNull();
 });
