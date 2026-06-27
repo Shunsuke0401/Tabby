@@ -1,9 +1,9 @@
 import { installIdleWatcher } from "./idle-watcher.js";
 import { gatherCandidates, closeAndRecord, reopen } from "./tabs-io.js";
-import { classify } from "./api.js";
+import { classify, matchClosed } from "./api.js";
 import { splitByAction } from "./decision.js";
 import { getClosedLog } from "./store.js";
-import { REVIEW_ALARM_MINUTES } from "./config.js";
+import { REVIEW_ALARM_MINUTES, BACKEND_URL } from "./config.js";
 
 console.log("Tabby background loaded");
 
@@ -52,4 +52,36 @@ chrome.alarms.onAlarm.addListener(async (a) => {
   if (a.name !== "review") return;
   const result = await runReview();
   await chrome.storage.local.set({ lastReview: result, lastReviewAt: Date.now() });
+});
+
+// Execute the tools Gemini Live calls during a voice conversation.
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type !== "VOICE_TOOL") return;
+  (async () => {
+    const { id, name, args } = msg.call;
+    let result = { ok: true };
+    const cands = await gatherCandidates();
+    const byId = Object.fromEntries(cands.map(c => [c.id, c]));
+    if (name === "closeTabs") {
+      for (const tid of (args.ids ?? [])) if (byId[tid]) await closeAndRecord({ description: byId[tid].title, keywords: [] }, byId[tid]);
+    } else if (name === "reopenTab") {
+      const url = await matchClosed(args.query);
+      if (url) await reopen(url);
+      result = { ok: !!url };
+    }
+    // keepTabs: no-op (just don't close)
+    chrome.runtime.sendMessage({ type: "VOICE_TOOL_RESULT", id, name, result });
+  })();
+});
+
+// "Talk to Tabby" entry point: open the offscreen doc, run a review, kick off the voice session.
+chrome.runtime.onMessage.addListener((msg, _s, send) => {
+  if (msg !== "TALK") return;
+  (async () => {
+    await ensureOffscreen();
+    const { suggest } = await runReview();
+    chrome.runtime.sendMessage({ type: "START_VOICE", suggestions: suggest, backendUrl: BACKEND_URL });
+    send({ ok: true });
+  })();
+  return true;
 });

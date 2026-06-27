@@ -44,3 +44,8 @@ $("reopenQuery").addEventListener("keydown", async (e) => {
   if (url) { await chrome.runtime.sendMessage({ type: "REOPEN", url }); e.target.value = ""; renderClosed(); }
   else { e.target.placeholder = "couldn't find that one — try describing it differently"; }
 });
+
+const talkBtn = document.createElement("button");
+talkBtn.textContent = "🎙️ Talk to Tabby";
+talkBtn.onclick = () => chrome.runtime.sendMessage("TALK");
+document.querySelector("header").appendChild(talkBtn);

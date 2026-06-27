@@ -1,6 +1,8 @@
-import { downsampleToPCM16 } from "./audio.js";
+import { downsampleToPCM16, pcm16ToFloat32 } from "./audio.js";
+import { connectLive } from "./live.js";
 
 let audioCtx, micStream, session;
+let playHead = 0; // schedule incoming audio chunks back-to-back
 
 async function startMic(onChunk) {
   micStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
@@ -12,4 +14,37 @@ async function startMic(onChunk) {
   const sink = audioCtx.createGain(); sink.gain.value = 0;
   src.connect(proc); proc.connect(sink); sink.connect(audioCtx.destination);
 }
-// session wiring added in Task 5
+
+// Live returns base64 PCM16 @ 24kHz; schedule chunks sequentially so they don't overlap.
+function playPCM(base64) {
+  const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+  const buf = audioCtx.createBuffer(1, int16.length, 24000);
+  buf.getChannelData(0).set(pcm16ToFloat32(int16));
+  const node = audioCtx.createBufferSource(); node.buffer = buf; node.connect(audioCtx.destination);
+  playHead = Math.max(playHead, audioCtx.currentTime);
+  node.start(playHead);
+  playHead += buf.duration;
+}
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === "START_VOICE") {
+    startVoice(msg);
+    return;
+  }
+  if (msg?.type === "VOICE_TOOL_RESULT" && session) {
+    session.toolResponse(msg.id, msg.name, msg.result);
+  }
+});
+
+async function startVoice(msg) {
+  audioCtx = audioCtx ?? new AudioContext();
+  const { token } = await fetch(`${msg.backendUrl}/live-token`, { method: "POST" }).then(r => r.json());
+  session = await connectLive({
+    token,
+    onAudio: playPCM,
+    onToolCall: (c) => chrome.runtime.sendMessage({ type: "VOICE_TOOL", call: c }),
+  });
+  await startMic((int16) => session.sendAudio(int16));
+  session.sendContext(`Suggested tabs to close: ${JSON.stringify(msg.suggestions)}. Greet Mark and ask about them.`);
+}
