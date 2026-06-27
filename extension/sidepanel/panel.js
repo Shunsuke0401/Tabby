@@ -5,3 +5,33 @@ async function refreshCount() {
 refreshCount();
 chrome.tabs.onCreated.addListener(refreshCount);
 chrome.tabs.onRemoved.addListener(refreshCount);
+
+const $ = id => document.getElementById(id);
+
+function row(text, btnLabel, onClick) {
+  const li = document.createElement("li");
+  li.textContent = text + " ";
+  if (btnLabel) { const b = document.createElement("button"); b.textContent = btnLabel; b.onclick = onClick; li.appendChild(b); }
+  return li;
+}
+
+async function renderClosed() {
+  const log = await chrome.runtime.sendMessage("GET_CLOSED");
+  $("closedList").replaceChildren(...log.map(r =>
+    row(`${r.title} — ${r.description}`, "Reopen",
+      async () => { await chrome.runtime.sendMessage({ type: "REOPEN", url: r.url }); renderClosed(); })));
+}
+
+$("reviewNow").onclick = async () => {
+  $("reviewNow").textContent = "Thinking…";
+  const { autoClosed, suggest } = await chrome.runtime.sendMessage("REVIEW_NOW");
+  $("autoClosedList").replaceChildren(...autoClosed.map(r => row(`${r.title} — ${r.reason}`)));
+  $("suggestList").replaceChildren(...suggest.map(r =>
+    row(`${r.title} — ${r.reason}`, "Close",
+      async (e) => { e.target.disabled = true;
+        await chrome.runtime.sendMessage({ type: "CLOSE_ONE", id: r.id, description: r.description, keywords: r.keywords });
+        renderClosed(); })));
+  $("reviewNow").textContent = "Review now";
+  renderClosed();
+};
+renderClosed();
