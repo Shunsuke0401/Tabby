@@ -54,7 +54,7 @@ talkBtn.onclick = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(t => t.stop());
   } catch (e) {
-    voiceStatus.textContent = `Microphone blocked — allow mic access and retry. [${e?.name ?? e}]`;
+    voiceStatus.textContent = `Mic error — ${e?.name ?? ""}: ${e?.message ?? e}`;
     return;
   }
   chrome.runtime.sendMessage("TALK");
