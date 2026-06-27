@@ -99,7 +99,11 @@ chrome.runtime.onMessage.addListener((msg, _s, send) => {
   (async () => {
     await ensureOffscreen();
     const { suggest } = await runReview();
-    chrome.runtime.sendMessage({ type: "START_VOICE", suggestions: suggest, backendUrl: BACKEND_URL });
+    const tabs = await chrome.tabs.query({});
+    const openTabs = tabs
+      .filter(t => t.url && !/^(chrome|edge|about|chrome-extension):/.test(t.url))
+      .map(t => ({ id: t.id, title: t.title, url: t.url }));
+    chrome.runtime.sendMessage({ type: "START_VOICE", suggestions: suggest, openTabs, backendUrl: BACKEND_URL });
     send({ ok: true });
   })();
   return true;

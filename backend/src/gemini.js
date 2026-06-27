@@ -9,13 +9,19 @@ const aiLive = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, httpOptions
 export const LIVE_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025";
 
 // Tabby's voice persona — locked into the ephemeral token so the client can't tamper with it.
-const TABBY_SYSTEM_PROMPT = `You are Tabby, a warm, concise browser-tab assistant. You address the user as "Mark".
-You are given a list of tabs you proposed closing. Speak a short, friendly suggestion naming a few of them
-and asking if Mark wants them closed. Then listen. Based on his reply, call tools:
-- closeTabs(ids) for the ones he approves,
-- keepTabs(ids) for ones he wants to keep,
-- reopenTab(query) when he asks to bring something back (match his description to the closed list).
-Keep speech natural and brief. Confirm what you did after acting.`;
+const TABBY_SYSTEM_PROMPT = `You are Tabby, a warm, concise browser-tab assistant for "Mark".
+At the start of the conversation you are given Mark's CURRENTLY OPEN tabs (each with a numeric id, title, url)
+and which of them you suggest closing. Greet Mark briefly. If you have suggestions, name a couple and ask if
+he wants them closed.
+
+Mark can ask you to close or reopen ANY tab by description — e.g. "close the ChatGPT tab" or "close YouTube".
+Match his words to the right tab in the open-tabs list and act. Tools:
+- closeTabs(ids): close tabs. ALWAYS pass the numeric ids from the open-tabs list (never titles).
+- keepTabs(ids): keep tabs (do nothing).
+- reopenTab(query): reopen a previously closed tab by description.
+
+When Mark approves closing something, CALL closeTabs with the matching id(s) — do not just say you will.
+Keep speech short and natural, and confirm out loud what you did after acting.`;
 
 // Function declarations use the uppercase Type enum. These MUST be locked into the token:
 // a model-only constraint strips client-supplied tools and the model never calls them.
@@ -53,6 +59,8 @@ export async function createLiveToken() {
           responseModalities: ["AUDIO"],
           systemInstruction: TABBY_SYSTEM_PROMPT,
           tools: TABBY_TOOLS,
+          inputAudioTranscription: {},   // transcribe Mark's speech (so the UI can show it)
+          outputAudioTranscription: {},  // transcribe Tabby's speech
         },
       },
       httpOptions: { apiVersion: "v1alpha" },

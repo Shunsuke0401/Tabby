@@ -3,7 +3,7 @@ import { pcm16ToBase64 } from "./audio.js";
 
 // The model + persona + tools are all locked inside the ephemeral token (minted by the
 // backend), so the client passes only the token and the model id it was given.
-export async function connectLive({ token, model, onAudio, onToolCall, onError, onClose, onOpen }) {
+export async function connectLive({ token, model, onAudio, onToolCall, onTranscript, onError, onClose, onOpen }) {
   const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
   const session = await ai.live.connect({
     model,
@@ -11,12 +11,16 @@ export async function connectLive({ token, model, onAudio, onToolCall, onError, 
     callbacks: {
       onopen: () => onOpen?.(),
       onmessage: (message) => {
+        const sc = message.serverContent;
         // Audio out: base64 PCM16 @ 24kHz arrives in serverContent.modelTurn.parts[].inlineData.
-        const parts = message.serverContent?.modelTurn?.parts || [];
+        const parts = sc?.modelTurn?.parts || [];
         for (const p of parts) {
           const data = p.inlineData?.data;
           if (data) onAudio(data);
         }
+        // Transcriptions (enabled in the token's config) — prove the audio pipeline works.
+        if (sc?.inputTranscription?.text) onTranscript?.({ role: "user", text: sc.inputTranscription.text });
+        if (sc?.outputTranscription?.text) onTranscript?.({ role: "tabby", text: sc.outputTranscription.text });
         const calls = message.toolCall?.functionCalls;
         if (calls) for (const c of calls) onToolCall(c); // { id, name, args }
       },

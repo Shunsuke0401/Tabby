@@ -61,12 +61,22 @@ async function startVoice(msg) {
         console.log("[Tabby] model toolCall:", c?.name, JSON.stringify(c?.args), "id:", c?.id);
         chrome.runtime.sendMessage({ type: "VOICE_TOOL", call: c });
       },
+      onTranscript: (t) => chrome.runtime.sendMessage({ type: "VOICE_TRANSCRIPT", role: t.role, text: t.text }),
       onError: (e) => setState("error", String(e?.message ?? e)),
       onClose: () => setState("idle"),
     });
-    await startMic((int16) => session.sendAudio(int16));
+    let micChunks = 0;
+    await startMic((int16) => {
+      session.sendAudio(int16);
+      if (++micChunks === 1) chrome.runtime.sendMessage({ type: "VOICE_DEBUG", text: "🎤 mic streaming…" });
+    });
     setState("listening");
-    session.sendContext(`Suggested tabs to close: ${JSON.stringify(msg.suggestions)}. Greet Mark and ask about them.`);
+    session.sendContext(
+      `Mark's currently open tabs (id, title, url): ${JSON.stringify(msg.openTabs ?? [])}.\n` +
+      `Tabs you suggest closing: ${JSON.stringify((msg.suggestions ?? []).map(s => ({ id: s.id, title: s.title, reason: s.reason })))}.\n` +
+      `Greet Mark briefly. If there are suggestions, name a couple and ask if he wants them closed. ` +
+      `He may also ask you to close or reopen any open tab by name — match it to the right id.`
+    );
   } catch (e) {
     console.error("startVoice failed", e);
     setState("error", String(e?.name ? e.name + ": " : "") + String(e?.message ?? e));

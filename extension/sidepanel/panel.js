@@ -72,6 +72,23 @@ const voiceDebug = document.createElement("div");
 voiceDebug.id = "voiceDebug";
 document.querySelector("header").appendChild(voiceDebug);
 
+const voiceTranscript = document.createElement("div");
+voiceTranscript.id = "voiceTranscript";
+document.querySelector("header").appendChild(voiceTranscript);
+
+let lastTranscriptRole = null;
+function addTranscript(role, text) {
+  if (role === lastTranscriptRole && voiceTranscript.firstElementChild) {
+    voiceTranscript.firstElementChild.textContent += text;
+  } else {
+    const line = document.createElement("div");
+    line.textContent = `${role === "user" ? "🗣️ You" : "🤖 Tabby"}: ${text}`;
+    voiceTranscript.prepend(line);
+    lastTranscriptRole = role;
+  }
+  while (voiceTranscript.childElementCount > 6) voiceTranscript.lastElementChild.remove();
+}
+
 const STATE_LABEL = {
   listening: "🎙️ listening",
   speaking: "🔊 Tabby speaking",
@@ -88,5 +105,8 @@ chrome.runtime.onMessage.addListener((msg) => {
     line.textContent = `🔧 ${msg.text}`;
     voiceDebug.prepend(line);
     while (voiceDebug.childElementCount > 5) voiceDebug.lastElementChild.remove();
+  }
+  if (msg?.type === "VOICE_TRANSCRIPT") {
+    addTranscript(msg.role, msg.text);
   }
 });
