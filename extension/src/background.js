@@ -3,11 +3,13 @@ import { gatherCandidates, closeAndRecord, reopen } from "./tabs-io.js";
 import { classify } from "./api.js";
 import { splitByAction } from "./decision.js";
 import { getClosedLog } from "./store.js";
+import { REVIEW_ALARM_MINUTES } from "./config.js";
 
 console.log("Tabby background loaded");
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  chrome.alarms.create("review", { periodInMinutes: REVIEW_ALARM_MINUTES });
 });
 
 installIdleWatcher();
@@ -35,4 +37,10 @@ chrome.runtime.onMessage.addListener((msg, _s, send) => {
   }
   if (msg?.type === "REOPEN") { reopen(msg.url).then(() => send({ ok: true })); return true; }
   if (msg === "GET_CLOSED") { getClosedLog().then(send); return true; }
+});
+
+chrome.alarms.onAlarm.addListener(async (a) => {
+  if (a.name !== "review") return;
+  const result = await runReview();
+  await chrome.storage.local.set({ lastReview: result, lastReviewAt: Date.now() });
 });
