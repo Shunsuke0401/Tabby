@@ -57,7 +57,10 @@ async function startVoice(msg) {
       token,
       model,
       onAudio: playPCM,
-      onToolCall: (c) => chrome.runtime.sendMessage({ type: "VOICE_TOOL", call: c }),
+      onToolCall: (c) => {
+        console.log("[Tabby] model toolCall:", c?.name, JSON.stringify(c?.args), "id:", c?.id);
+        chrome.runtime.sendMessage({ type: "VOICE_TOOL", call: c });
+      },
       onError: (e) => setState("error", String(e?.message ?? e)),
       onClose: () => setState("idle"),
     });

@@ -59,17 +59,36 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type !== "VOICE_TOOL") return;
   (async () => {
     const { id, name, args } = msg.call;
+    console.log("[Tabby] VOICE_TOOL", name, JSON.stringify(args));
     let result = { ok: true };
-    const cands = await gatherCandidates();
-    const byId = Object.fromEntries(cands.map(c => [c.id, c]));
-    if (name === "closeTabs") {
-      for (const tid of (args.ids ?? [])) if (byId[tid]) await closeAndRecord({ description: byId[tid].title, keywords: [] }, byId[tid]);
-    } else if (name === "reopenTab") {
-      const url = await matchClosed(args.query);
-      if (url) await reopen(url);
-      result = { ok: !!url };
+    let note = "";
+    try {
+      if (name === "closeTabs") {
+        const ids = (args?.ids ?? []).map(Number);
+        let closed = 0;
+        for (const tid of ids) {
+          try {
+            const tab = await chrome.tabs.get(tid);              // close ANY tab by id, not just idle candidates
+            await closeAndRecord({ description: tab.title, keywords: [] }, { id: tid, url: tab.url, title: tab.title });
+            closed++;
+          } catch (e) { console.warn("[Tabby] couldn't close tab", tid, e?.message); }
+        }
+        result = { ok: closed > 0, closed };
+        note = `closeTabs ${JSON.stringify(ids)} → closed ${closed}/${ids.length}`;
+      } else if (name === "reopenTab") {
+        const url = await matchClosed(args?.query ?? "");
+        if (url) await reopen(url);
+        result = { ok: !!url };
+        note = `reopenTab "${args?.query}" → ${url ? "reopened" : "no match"}`;
+      } else {
+        note = `${name} (no-op)`; // keepTabs
+      }
+    } catch (e) {
+      result = { ok: false };
+      note = `${name} ERROR: ${e?.message ?? e}`;
     }
-    // keepTabs: no-op (just don't close)
+    console.log("[Tabby]", note);
+    chrome.runtime.sendMessage({ type: "VOICE_DEBUG", text: note });
     chrome.runtime.sendMessage({ type: "VOICE_TOOL_RESULT", id, name, result });
   })();
 });

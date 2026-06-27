@@ -68,6 +68,10 @@ const voiceStatus = document.createElement("span");
 voiceStatus.id = "voiceStatus";
 document.querySelector("header").appendChild(voiceStatus);
 
+const voiceDebug = document.createElement("div");
+voiceDebug.id = "voiceDebug";
+document.querySelector("header").appendChild(voiceDebug);
+
 const STATE_LABEL = {
   listening: "🎙️ listening",
   speaking: "🔊 Tabby speaking",
@@ -75,7 +79,14 @@ const STATE_LABEL = {
   idle: "",
 };
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type !== "VOICE_STATE") return;
-  const base = STATE_LABEL[msg.state] ?? "";
-  voiceStatus.textContent = msg.detail ? `${base} [${msg.detail}]` : base;
+  if (msg?.type === "VOICE_STATE") {
+    const base = STATE_LABEL[msg.state] ?? "";
+    voiceStatus.textContent = msg.detail ? `${base} [${msg.detail}]` : base;
+  }
+  if (msg?.type === "VOICE_DEBUG") {
+    const line = document.createElement("div");
+    line.textContent = `🔧 ${msg.text}`;
+    voiceDebug.prepend(line);
+    while (voiceDebug.childElementCount > 5) voiceDebug.lastElementChild.remove();
+  }
 });
