@@ -47,7 +47,18 @@ $("reopenQuery").addEventListener("keydown", async (e) => {
 
 const talkBtn = document.createElement("button");
 talkBtn.textContent = "🎙️ Talk to Tabby";
-talkBtn.onclick = () => chrome.runtime.sendMessage("TALK");
+talkBtn.onclick = async () => {
+  // The offscreen document can't show a mic prompt; grant it here (a visible page) first,
+  // which persists the permission for the extension origin so offscreen capture works.
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(t => t.stop());
+  } catch (e) {
+    voiceStatus.textContent = `Microphone blocked — allow mic access and retry. [${e?.name ?? e}]`;
+    return;
+  }
+  chrome.runtime.sendMessage("TALK");
+};
 document.querySelector("header").appendChild(talkBtn);
 
 const voiceStatus = document.createElement("span");
@@ -61,5 +72,7 @@ const STATE_LABEL = {
   idle: "",
 };
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type === "VOICE_STATE") voiceStatus.textContent = STATE_LABEL[msg.state] ?? "";
+  if (msg?.type !== "VOICE_STATE") return;
+  const base = STATE_LABEL[msg.state] ?? "";
+  voiceStatus.textContent = msg.detail ? `${base} [${msg.detail}]` : base;
 });

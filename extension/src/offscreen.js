@@ -6,10 +6,10 @@ let playHead = 0;        // schedule incoming audio chunks back-to-back
 let speakTimer;
 let lastState = "";
 
-function setState(state) {
-  if (state === lastState) return;
+function setState(state, detail) {
+  if (state === lastState && !detail) return;
   lastState = state;
-  chrome.runtime.sendMessage({ type: "VOICE_STATE", state });
+  chrome.runtime.sendMessage({ type: "VOICE_STATE", state, detail });
 }
 
 async function startMic(onChunk) {
@@ -58,7 +58,7 @@ async function startVoice(msg) {
       model,
       onAudio: playPCM,
       onToolCall: (c) => chrome.runtime.sendMessage({ type: "VOICE_TOOL", call: c }),
-      onError: () => setState("error"),
+      onError: (e) => setState("error", String(e?.message ?? e)),
       onClose: () => setState("idle"),
     });
     await startMic((int16) => session.sendAudio(int16));
@@ -66,6 +66,6 @@ async function startVoice(msg) {
     session.sendContext(`Suggested tabs to close: ${JSON.stringify(msg.suggestions)}. Greet Mark and ask about them.`);
   } catch (e) {
     console.error("startVoice failed", e);
-    setState("error");
+    setState("error", String(e?.name ? e.name + ": " : "") + String(e?.message ?? e));
   }
 }
