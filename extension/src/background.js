@@ -80,6 +80,13 @@ chrome.runtime.onMessage.addListener((msg) => {
         if (url) await reopen(url);
         result = { ok: !!url };
         note = `reopenTab "${args?.query}" → ${url ? "reopened" : "no match"}`;
+      } else if (name === "reviewTabs") {
+        const { autoClosed, suggest } = await runReview();   // scan happens ONLY when Mark asks
+        result = {
+          closed: autoClosed.map(r => ({ id: r.id, title: r.title, reason: r.reason })),
+          suggested: suggest.map(r => ({ id: r.id, title: r.title, reason: r.reason })),
+        };
+        note = `reviewTabs → auto-closed ${autoClosed.length}, suggested ${suggest.length}`;
       } else {
         note = `${name} (no-op)`; // keepTabs
       }
@@ -98,12 +105,13 @@ chrome.runtime.onMessage.addListener((msg, _s, send) => {
   if (msg !== "TALK") return;
   (async () => {
     await ensureOffscreen();
-    const { suggest } = await runReview();
+    // Listen-first: do NOT scan/classify here. Just hand the model the open tabs so it can
+    // act on what Mark asks (reopen, close-by-name, or a scan via the reviewTabs tool).
     const tabs = await chrome.tabs.query({});
     const openTabs = tabs
       .filter(t => t.url && !/^(chrome|edge|about|chrome-extension):/.test(t.url))
       .map(t => ({ id: t.id, title: t.title, url: t.url }));
-    chrome.runtime.sendMessage({ type: "START_VOICE", suggestions: suggest, openTabs, backendUrl: BACKEND_URL });
+    chrome.runtime.sendMessage({ type: "START_VOICE", openTabs, backendUrl: BACKEND_URL });
     send({ ok: true });
   })();
   return true;

@@ -73,9 +73,7 @@ async function startVoice(msg) {
     setState("listening");
     session.sendContext(
       `Mark's currently open tabs (id, title, url): ${JSON.stringify(msg.openTabs ?? [])}.\n` +
-      `Tabs you suggest closing: ${JSON.stringify((msg.suggestions ?? []).map(s => ({ id: s.id, title: s.title, reason: s.reason })))}.\n` +
-      `Greet Mark briefly. If there are suggestions, name a couple and ask if he wants them closed. ` +
-      `He may also ask you to close or reopen any open tab by name — match it to the right id.`
+      `Greet Mark briefly and ask how you can help, then wait for his request. Do not scan or close anything yet.`
     );
   } catch (e) {
     console.error("startVoice failed", e);
