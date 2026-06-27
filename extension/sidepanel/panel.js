@@ -49,3 +49,17 @@ const talkBtn = document.createElement("button");
 talkBtn.textContent = "🎙️ Talk to Tabby";
 talkBtn.onclick = () => chrome.runtime.sendMessage("TALK");
 document.querySelector("header").appendChild(talkBtn);
+
+const voiceStatus = document.createElement("span");
+voiceStatus.id = "voiceStatus";
+document.querySelector("header").appendChild(voiceStatus);
+
+const STATE_LABEL = {
+  listening: "🎙️ listening",
+  speaking: "🔊 Tabby speaking",
+  error: "Voice unavailable — use the buttons.",
+  idle: "",
+};
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === "VOICE_STATE") voiceStatus.textContent = STATE_LABEL[msg.state] ?? "";
+});

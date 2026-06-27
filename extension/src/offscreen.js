@@ -2,7 +2,15 @@ import { downsampleToPCM16, pcm16ToFloat32 } from "./audio.js";
 import { connectLive } from "./live.js";
 
 let audioCtx, micStream, session;
-let playHead = 0; // schedule incoming audio chunks back-to-back
+let playHead = 0;        // schedule incoming audio chunks back-to-back
+let speakTimer;
+let lastState = "";
+
+function setState(state) {
+  if (state === lastState) return;
+  lastState = state;
+  chrome.runtime.sendMessage({ type: "VOICE_STATE", state });
+}
 
 async function startMic(onChunk) {
   micStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
@@ -25,6 +33,9 @@ function playPCM(base64) {
   playHead = Math.max(playHead, audioCtx.currentTime);
   node.start(playHead);
   playHead += buf.duration;
+  setState("speaking");
+  clearTimeout(speakTimer);
+  speakTimer = setTimeout(() => setState("listening"), (playHead - audioCtx.currentTime) * 1000 + 150);
 }
 
 chrome.runtime.onMessage.addListener((msg) => {
@@ -38,13 +49,22 @@ chrome.runtime.onMessage.addListener((msg) => {
 });
 
 async function startVoice(msg) {
-  audioCtx = audioCtx ?? new AudioContext();
-  const { token } = await fetch(`${msg.backendUrl}/live-token`, { method: "POST" }).then(r => r.json());
-  session = await connectLive({
-    token,
-    onAudio: playPCM,
-    onToolCall: (c) => chrome.runtime.sendMessage({ type: "VOICE_TOOL", call: c }),
-  });
-  await startMic((int16) => session.sendAudio(int16));
-  session.sendContext(`Suggested tabs to close: ${JSON.stringify(msg.suggestions)}. Greet Mark and ask about them.`);
+  try {
+    audioCtx = audioCtx ?? new AudioContext();
+    const { token } = await fetch(`${msg.backendUrl}/live-token`, { method: "POST" }).then(r => r.json());
+    if (!token) throw new Error("no live token");
+    session = await connectLive({
+      token,
+      onAudio: playPCM,
+      onToolCall: (c) => chrome.runtime.sendMessage({ type: "VOICE_TOOL", call: c }),
+      onError: () => setState("error"),
+      onClose: () => setState("idle"),
+    });
+    await startMic((int16) => session.sendAudio(int16));
+    setState("listening");
+    session.sendContext(`Suggested tabs to close: ${JSON.stringify(msg.suggestions)}. Greet Mark and ask about them.`);
+  } catch (e) {
+    console.error("startVoice failed", e);
+    setState("error");
+  }
 }
