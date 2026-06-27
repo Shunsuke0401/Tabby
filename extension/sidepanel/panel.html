@@ -2,14 +2,46 @@
 <html>
   <head><link rel="stylesheet" href="panel.css" /></head>
   <body>
-    <header><h1>Tabby</h1><span id="count">— tabs</span></header>
-    <button id="reviewNow">Review now</button>
-    <section id="autoClosed"><h2>Closed for you</h2><ul id="autoClosedList"></ul></section>
-    <section id="suggestions"><h2>Asking about</h2><ul id="suggestList"></ul></section>
-    <section id="closedLog"><h2>Closed by Tabby (click to reopen)</h2>
-      <input id="reopenQuery" placeholder="describe a tab to bring back…" />
-      <ul id="closedList"></ul>
-    </section>
+    <!-- ───────── IDLE VIEW ───────── -->
+    <div id="idleView">
+      <header>
+        <div class="brand"><h1>Tabby</h1><span id="count">— tabs</span></div>
+        <button id="micBtn" class="icon-btn" title="Choose microphone" aria-label="Choose microphone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="23" />
+            <line x1="8" y1="23" x2="16" y2="23" />
+          </svg>
+        </button>
+      </header>
+
+      <div id="micMenu" class="mic-menu" hidden>
+        <label for="micPicker">Microphone</label>
+        <select id="micPicker"></select>
+      </div>
+
+      <button id="startBtn" class="start-btn">🎙️ Start Tabby</button>
+      <button id="reviewNow" class="secondary-btn">Review now (no voice)</button>
+
+      <section id="autoClosed"><h2>Closed for you</h2><ul id="autoClosedList"></ul></section>
+      <section id="suggestions"><h2>Asking about</h2><ul id="suggestList"></ul></section>
+      <section id="closedLog"><h2>Closed by Tabby (click to reopen)</h2>
+        <input id="reopenQuery" placeholder="describe a tab to bring back…" />
+        <ul id="closedList"></ul>
+      </section>
+    </div>
+
+    <!-- ───────── ACTIVE VIEW (immersive loader) ───────── -->
+    <div id="activeView" hidden>
+      <button id="endBtn" class="end-btn" title="End session" aria-label="End session">✕</button>
+      <div class="loader">
+        <div class="loader__word" id="statusWord" aria-live="polite"></div>
+        <div class="loader__ring"></div>
+      </div>
+      <div id="activeTranscript"></div>
+    </div>
+
     <script type="module" src="panel.js"></script>
   </body>
 </html>

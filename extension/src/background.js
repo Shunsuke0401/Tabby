@@ -7,6 +7,10 @@ import { REVIEW_ALARM_MINUTES, BACKEND_URL } from "./config.js";
 
 console.log("Tabby background loaded");
 
+// Lightweight status broadcasts for the side-panel loader (no logic change).
+function emitStatus(value) { chrome.runtime.sendMessage({ type: "STATUS", value }).catch(() => {}); }
+function hostOf(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } }
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   chrome.alarms.create("review", { periodInMinutes: REVIEW_ALARM_MINUTES });
@@ -24,6 +28,7 @@ async function ensureOffscreen() {
 }
 
 async function runReview() {
+  emitStatus("Analyzing");
   const candidates = await gatherCandidates();
   const byId = Object.fromEntries(candidates.map(c => [c.id, c]));
   const results = await classify(candidates);
@@ -65,6 +70,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     try {
       if (name === "closeTabs") {
         const ids = (args?.ids ?? []).map(Number);
+        emitStatus("Closing");
         let closed = 0;
         for (const tid of ids) {
           try {
@@ -74,10 +80,11 @@ chrome.runtime.onMessage.addListener((msg) => {
           } catch (e) { console.warn("[Tabby] couldn't close tab", tid, e?.message); }
         }
         result = { ok: closed > 0, closed };
+        emitStatus("Closed");
         note = `closeTabs ${JSON.stringify(ids)} → closed ${closed}/${ids.length}`;
       } else if (name === "reopenTab") {
         const url = await matchClosed(args?.query ?? "");
-        if (url) await reopen(url);
+        if (url) { await reopen(url); emitStatus("Reopening " + hostOf(url)); }
         result = { ok: !!url };
         note = `reopenTab "${args?.query}" → ${url ? "reopened" : "no match"}`;
       } else if (name === "reviewTabs") {
