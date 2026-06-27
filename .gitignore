@@ -1,0 +1,10 @@
+node_modules/
+*.log
+.env
+.DS_Store
+dist/
+*.zip
+
+# planning docs stay local — keep the public repo product-only
+plan.md
+implementation-plan.md
