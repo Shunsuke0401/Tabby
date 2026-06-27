@@ -23,9 +23,16 @@ function teardown() {
 }
 
 async function startMic(onChunk) {
-  micStream = await navigator.mediaDevices.getUserMedia({
-    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-  });
+  const base = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+  const stored = (await chrome.storage.local.get("micDeviceId")).micDeviceId;
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: stored ? { ...base, deviceId: { exact: stored } } : base,
+    });
+  } catch (e) {
+    // Chosen device unavailable — fall back to the system default rather than failing.
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: base });
+  }
   audioCtx = audioCtx ?? new AudioContext();
   if (audioCtx.state === "suspended") await audioCtx.resume();
   // Diagnostics: surface exactly what we captured (device, muted, live) + context state.

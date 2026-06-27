@@ -64,6 +64,7 @@ talkBtn.onclick = async () => {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach(t => t.stop());
+    populateMics(); // labels are available now that permission is granted
   } catch (e) {
     chrome.tabs.create({ url: chrome.runtime.getURL("mic-permission.html") });
     voiceStatus.textContent = "Opened a tab to enable your microphone — click Allow there, then press Talk again.";
@@ -81,6 +82,29 @@ document.querySelector("header").appendChild(voiceStatus);
 const micLevel = document.createElement("div");
 micLevel.id = "micLevel";
 document.querySelector("header").appendChild(micLevel);
+
+// Microphone picker — virtual devices (e.g. "Background Music") are often the OS default and
+// capture no mic audio, so let the user choose the real one. Stored deviceId is read by offscreen.
+const micPicker = document.createElement("select");
+micPicker.id = "micPicker";
+document.querySelector("header").appendChild(micPicker);
+
+async function populateMics() {
+  let devices = [];
+  try { devices = await navigator.mediaDevices.enumerateDevices(); } catch { return; }
+  const mics = devices.filter(d => d.kind === "audioinput");
+  const stored = (await chrome.storage.local.get("micDeviceId")).micDeviceId;
+  micPicker.replaceChildren(...mics.map((d, i) => {
+    const o = document.createElement("option");
+    o.value = d.deviceId;
+    o.textContent = d.label || `Microphone ${i + 1}`;
+    if (d.deviceId === stored) o.selected = true;
+    return o;
+  }));
+}
+micPicker.onchange = () => chrome.storage.local.set({ micDeviceId: micPicker.value });
+populateMics();
+navigator.mediaDevices.addEventListener?.("devicechange", populateMics);
 
 const voiceDebug = document.createElement("div");
 voiceDebug.id = "voiceDebug";
