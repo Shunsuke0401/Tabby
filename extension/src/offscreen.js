@@ -96,8 +96,10 @@ async function startVoice(msg) {
         chrome.runtime.sendMessage({ type: "VOICE_TOOL", call: c });
       },
       onTranscript: (t) => chrome.runtime.sendMessage({ type: "VOICE_TRANSCRIPT", role: t.role, text: t.text }),
-      onError: (e) => setState("error", String(e?.message ?? e)),
-      onClose: () => setState("idle"),
+      // Surface the close reason (e.g. depleted credits) and stop the mic so we don't keep
+      // sending into a dead socket ("WebSocket already CLOSED" spam).
+      onError: (e) => { teardown(); setState("error", String(e?.message ?? e)); },
+      onClose: (e) => { const reason = e?.reason; teardown(); setState(reason ? "error" : "idle", reason || undefined); },
     });
     let micChunks = 0;
     await startMic((int16) => {
