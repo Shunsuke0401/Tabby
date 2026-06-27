@@ -55,24 +55,10 @@ header {
   margin-bottom: 8px; box-shadow: 0 2px 10px rgba(224, 138, 60, .3);
 }
 .start-btn:hover { filter: brightness(.97); }
-.secondary-btn {
-  width: 100%; padding: 8px; font-size: 13px; color: var(--muted);
-  background: #f9fafb; border: 1px solid var(--line); border-radius: 8px;
-  cursor: pointer; margin-bottom: 16px;
-}
-.secondary-btn:hover { background: #f3f4f6; }
 
-section { margin-bottom: 18px; }
-section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
-ul { list-style: none; margin: 0; padding: 0; }
-li {
-  padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 6px;
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-}
-li button { flex: none; padding: 4px 10px; font-size: 12px; border: 1px solid var(--line); border-radius: 5px; background: #f9fafb; cursor: pointer; }
-li button:hover { background: #f3f4f6; }
-li button:disabled { opacity: .5; cursor: default; }
-#reopenQuery { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; }
+.idle-center { padding-top: 56px; text-align: center; }
+.idle-tagline { font-size: 15px; color: var(--muted); margin: 0 0 22px; }
+.idle-hint { font-size: 12px; color: var(--muted); margin: 16px 0 0; padding: 0 14px; }
 
 /* ───────── ACTIVE / LOADER VIEW (ported from the reference component) ───────── */
 #activeView {

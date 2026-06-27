@@ -1,6 +1,6 @@
 import { installIdleWatcher } from "./idle-watcher.js";
 import { gatherCandidates, closeAndRecord, reopen } from "./tabs-io.js";
-import { classify, matchClosed } from "./api.js";
+import { classify } from "./api.js";
 import { splitByAction } from "./decision.js";
 import { getClosedLog } from "./store.js";
 import { REVIEW_ALARM_MINUTES, BACKEND_URL } from "./config.js";
@@ -10,6 +10,20 @@ console.log("Tabby background loaded");
 // Lightweight status broadcasts for the side-panel loader (no logic change).
 function emitStatus(value) { chrome.runtime.sendMessage({ type: "STATUS", value }).catch(() => {}); }
 function hostOf(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } }
+
+// Semantic reopen, run from the background: read the closed-log directly (a service worker
+// does not receive its own GET_CLOSED message) and ask the backend to match the description.
+async function matchClosedDescription(query) {
+  const records = await getClosedLog();
+  if (!query || !records.length) return null;
+  try {
+    const res = await fetch(`${BACKEND_URL}/match`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, records }),
+    });
+    return (await res.json()).url ?? null;
+  } catch { return null; }
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -83,7 +97,7 @@ chrome.runtime.onMessage.addListener((msg) => {
         emitStatus("Closed");
         note = `closeTabs ${JSON.stringify(ids)} → closed ${closed}/${ids.length}`;
       } else if (name === "reopenTab") {
-        const url = await matchClosed(args?.query ?? "");
+        const url = await matchClosedDescription(args?.query ?? "");
         if (url) { await reopen(url); emitStatus("Reopening " + hostOf(url)); }
         result = { ok: !!url };
         note = `reopenTab "${args?.query}" → ${url ? "reopened" : "no match"}`;

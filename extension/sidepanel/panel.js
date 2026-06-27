@@ -1,5 +1,3 @@
-import { matchClosed } from "../src/api.js";
-
 const $ = id => document.getElementById(id);
 
 /* ───────── tab count ───────── */
@@ -11,20 +9,6 @@ refreshCount();
 chrome.tabs.onCreated.addListener(refreshCount);
 chrome.tabs.onRemoved.addListener(refreshCount);
 
-/* ───────── closed-list + suggestion rows ───────── */
-function row(text, btnLabel, onClick) {
-  const li = document.createElement("li");
-  li.textContent = text + " ";
-  if (btnLabel) { const b = document.createElement("button"); b.textContent = btnLabel; b.onclick = onClick; li.appendChild(b); }
-  return li;
-}
-async function renderClosed() {
-  const log = await chrome.runtime.sendMessage("GET_CLOSED");
-  $("closedList").replaceChildren(...(log || []).map(r =>
-    row(`${r.title} — ${r.description}`, "Reopen",
-      async () => { await chrome.runtime.sendMessage({ type: "REOPEN", url: r.url }); renderClosed(); })));
-}
-
 /* ───────── active view + animated status word ───────── */
 const activeView = $("activeView"), statusWord = $("statusWord"), transcriptEl = $("activeTranscript");
 let statusLockUntil = 0;
@@ -34,7 +18,7 @@ function renderWord(word) {
   statusWord.style.fontSize = len > 14 ? "15px" : len > 10 ? "18px" : "22px";
   statusWord.replaceChildren(...[...word].map((ch, i) => {
     const s = document.createElement("span");
-    s.textContent = ch === " " ? " " : ch;
+    s.textContent = ch === " " ? " " : ch;
     s.style.animationDelay = `${i * 0.1}s`;
     return s;
   }));
@@ -45,7 +29,7 @@ function setStatus(word, lockMs = 0) {
 }
 const isActive = () => !activeView.hidden;
 function showActive(word) { setStatus(word); transcriptEl.textContent = ""; activeView.hidden = false; }
-function showIdle() { activeView.hidden = true; transcriptEl.textContent = ""; statusLockUntil = 0; renderClosed(); }
+function showIdle() { activeView.hidden = true; transcriptEl.textContent = ""; statusLockUntil = 0; }
 
 // reassemble streamed transcript chunks per speaker
 let trRole = null, trText = "";
@@ -72,30 +56,6 @@ $("startBtn").onclick = async () => {
   showActive("Listening");
 };
 $("endBtn").onclick = () => { chrome.runtime.sendMessage("STOP_VOICE"); showIdle(); };
-
-/* ───────── Review now (button flow — also uses the loader) ───────── */
-$("reviewNow").onclick = async () => {
-  showActive("Analyzing");
-  statusLockUntil = Date.now() + 60000; // hold "Analyzing" through classification
-  const { autoClosed = [], suggest = [] } = (await chrome.runtime.sendMessage("REVIEW_NOW")) || {};
-  $("autoClosedList").replaceChildren(...autoClosed.map(r => row(`${r.title} — ${r.reason}`)));
-  $("suggestList").replaceChildren(...suggest.map(r =>
-    row(`${r.title} — ${r.reason}`, "Close",
-      async (e) => { e.target.disabled = true;
-        await chrome.runtime.sendMessage({ type: "CLOSE_ONE", id: r.id, description: r.description, keywords: r.keywords });
-        renderClosed(); })));
-  statusLockUntil = 0;
-  setStatus("Closed");
-  setTimeout(showIdle, 1400);
-};
-
-/* ───────── semantic reopen box ───────── */
-$("reopenQuery").addEventListener("keydown", async (e) => {
-  if (e.key !== "Enter" || !e.target.value.trim()) return;
-  const url = await matchClosed(e.target.value.trim());
-  if (url) { await chrome.runtime.sendMessage({ type: "REOPEN", url }); e.target.value = ""; renderClosed(); }
-  else { e.target.placeholder = "couldn't find that one — try describing it differently"; }
-});
 
 /* ───────── microphone picker (icon → menu) ───────── */
 $("micBtn").onclick = () => {
@@ -138,5 +98,3 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
   if (msg?.type === "VOICE_TRANSCRIPT" && isActive()) showTranscript(msg.role, msg.text);
 });
-
-renderClosed();
