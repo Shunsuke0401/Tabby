@@ -2,7 +2,7 @@ import express from "express";
 import { buildClassifyPrompt, buildMatchPrompt } from "./src/prompt.js";
 import { parseClassifyResponse, parseMatchResponse } from "./src/parse.js";
 import { CLASSIFY_SCHEMA, MATCH_SCHEMA } from "./src/schema.js";
-import { generateJson, createLiveToken } from "./src/gemini.js";
+import { generateJson, createLiveToken, LIVE_MODEL } from "./src/gemini.js";
 const app = express();
 app.use(express.json({ limit: "5mb" }));
 app.use((_, res, next) => { res.set("Access-Control-Allow-Origin", "*");
@@ -34,7 +34,7 @@ app.post("/match", async (req, res) => {
 });
 
 app.post("/live-token", async (_req, res) => {
-  try { res.json({ token: await createLiveToken() }); }
+  try { res.json({ token: await createLiveToken(), model: LIVE_MODEL }); }
   catch (e) { console.error(e); res.status(502).json({ error: "token_failed" }); }
 });
 

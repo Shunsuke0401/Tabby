@@ -1,38 +1,13 @@
 import { GoogleGenAI, Modality } from "../vendor/genai.js";
 import { pcm16ToBase64 } from "./audio.js";
 
-// Verified against the live models list for this key; half-cascade = reliable function-calling.
-export const LIVE_MODEL = "gemini-3.1-flash-live-preview";
-
-export const TABBY_SYSTEM_PROMPT = `You are Tabby, a warm, concise browser-tab assistant. You address the user as "Mark".
-You are given a list of tabs you proposed closing. Speak a short, friendly suggestion naming a few of them
-and asking if Mark wants them closed. Then listen. Based on his reply, call tools:
-- closeTabs(ids) for the ones he approves,
-- keepTabs(ids) for ones he wants to keep,
-- reopenTab(query) when he asks to bring something back (match his description to the closed list).
-Keep speech natural and brief. Confirm what you did after acting.`;
-
-export const TOOL_DECLS = [{
-  functionDeclarations: [
-    { name: "closeTabs", description: "Close the tabs with these ids",
-      parameters: { type: "object", properties: { ids: { type: "array", items: { type: "integer" } } }, required: ["ids"] } },
-    { name: "keepTabs", description: "Keep (do not close) the tabs with these ids",
-      parameters: { type: "object", properties: { ids: { type: "array", items: { type: "integer" } } }, required: ["ids"] } },
-    { name: "reopenTab", description: "Reopen a previously closed tab matching the user's description",
-      parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
-  ],
-}];
-
-export async function connectLive({ token, onAudio, onToolCall, onError, onClose, onOpen }) {
-  // The ephemeral token is used as the apiKey; Live lives on the v1alpha surface.
+// The model + persona + tools are all locked inside the ephemeral token (minted by the
+// backend), so the client passes only the token and the model id it was given.
+export async function connectLive({ token, model, onAudio, onToolCall, onError, onClose, onOpen }) {
   const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
   const session = await ai.live.connect({
-    model: LIVE_MODEL,
-    config: {
-      responseModalities: [Modality.AUDIO],
-      systemInstruction: TABBY_SYSTEM_PROMPT,
-      tools: TOOL_DECLS,
-    },
+    model,
+    config: { responseModalities: [Modality.AUDIO] }, // systemInstruction + tools come from the token's locked config
     callbacks: {
       onopen: () => onOpen?.(),
       onmessage: (message) => {

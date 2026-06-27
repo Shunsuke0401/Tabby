@@ -51,10 +51,11 @@ chrome.runtime.onMessage.addListener((msg) => {
 async function startVoice(msg) {
   try {
     audioCtx = audioCtx ?? new AudioContext();
-    const { token } = await fetch(`${msg.backendUrl}/live-token`, { method: "POST" }).then(r => r.json());
-    if (!token) throw new Error("no live token");
+    const { token, model } = await fetch(`${msg.backendUrl}/live-token`, { method: "POST" }).then(r => r.json());
+    if (!token || !model) throw new Error("no live token");
     session = await connectLive({
       token,
+      model,
       onAudio: playPCM,
       onToolCall: (c) => chrome.runtime.sendMessage({ type: "VOICE_TOOL", call: c }),
       onError: () => setState("error"),
